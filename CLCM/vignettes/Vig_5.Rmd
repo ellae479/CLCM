@@ -1,0 +1,165 @@
+---
+title: "Vignette_5"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette_5}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+
+## Longitudinal CLCM & Transition Matrix
+
+1. All Item Types 
+2. K = 1, yielding 2^K = 2 latent classes
+3. T=2, 2 timepoints (longitudinal data)
+4. Generate data using transition matrix
+5. Fit CLCM
+6. Re-fit CLCM with constraint on latent classes
+7. Compare model fit of the two models via AIC/BIC
+8. Examine transition matrix of CLCM
+8. Compute classification accuracy 
+
+TODO: what is the value of N used in the computation of BIC with longitudinal data?
+
+
+
+## Specify Details of Data Generation 
+
+```{r Specify_1}
+library(CLCM)
+
+N <- 80
+item.type <- c('Ordinal', 'Nominal', 'Poisson', 'Neg_Binom', 'ZINB', 'ZIP', 'Normal', 'Beta') 
+sim.categories.j <- c(4, 4, 30, 30, 30, 30, NA, NA) 
+J <- length(item.type)
+item.names <- paste0('Item_', 1:J)
+Q <- matrix(1, nrow = length(item.type), ncol = 1, dimnames = list(paste0('Item_', 1:length(item.type)), NULL))
+K= ncol(Q) 
+
+```
+
+
+### Specify transition matrix
+The next step is to specify the posterior distribution proportions that will be generated. Here we specify the latent class proportions at Timepoint 1, and the transition matrix, `tau`. This is sufficient to completely specify the latent class assignment of each subject at each timepoint.  
+
+```{r Specify_2}
+
+lc.prop <- list('Time_1' = c(0, 1) ) 
+tau <- matrix(c(0, 0, 0.4, 0.6), nrow = 2^K, ncol = 2^K, byrow = T)
+
+```
+
+
+## Simulate Item Responses
+Pass everything to the `simulate()` function and generate the item responses:
+
+```{r Generate}
+set.seed(03102021)
+sim.dat <- simulate_clcm(N = N, 
+                         number.timepoints = 2, 
+                         Q = Q, 
+                         item.names = item.names, 
+                         item.type = item.type, 
+                         categories.j = sim.categories.j, 
+                         lc.prop = lc.prop,
+                         transition.matrix = tau)
+
+```
+
+
+## Estimate CLCM
+
+Estimate the latent class model, using the correct Q-matrix. The data is in long format and has a variable `Time`, a factor with two levels, `Time_1` and `Time_2` to distinguish timepoints. 
+
+```{r Estimate}
+
+mod1 <- clcm(dat = sim.dat$dat, 
+             item.type = sim.dat$item.type, 
+             item.names = sim.dat$item.names, 
+             Q = sim.dat$Q, 
+             max.diff = 0.001) 
+
+```
+
+We are going to compare this model to a second model with a constraint imposed on the latent classes. However, before do that, let's quickly examine the transition matrix and the classification accuracy. 
+
+## Transition Matrix
+
+```{r tau}
+transition_matrix_clcm(mod = mod1)
+```
+
+
+## Classification Accuracy 
+
+Check the classification accuracy of this model comparing the true/generating latent class assignments (lca) to the estimated lca. 
+```{r Classification}
+lca.hat <- mod1$dat$lca 
+lca.true <- mod1$dat$true_lca      
+table(lca.true == lca.hat)
+prop.table(table(lca.true == lca.hat))
+xtabs( ~ lca.true + lca.hat)
+
+```
+
+
+## Estimate CLCM with Constraint
+
+Estimate `mod2`, this time with the first latent class constrained to equal zero at timepoint 1. This is done through the use of the `lc.con` function call. 
+
+```{r Estimate_2}
+mod2 <- clcm(dat = sim.dat$dat, 
+             lc.con = list('Time_1' = c(NA, 1), 'Time_2' = c(1, 1)), 
+             sv = sim.dat$param,
+             item.type = sim.dat$item.type, 
+             item.names = sim.dat$item.names, 
+             Q = sim.dat$Q, 
+             max.diff = 0.001) 
+      
+```
+
+
+## Model Fit Comparison
+
+Check the model fit of the second model, which has one fewer parameter estimated compared to mod1.
+
+```{r Fit}
+unlist( aic_bic_clcm(mod = mod1) )
+unlist( aic_bic_clcm(mod = mod2) )
+```
+We can see that imposing the constraint yields slightly lower AIC/BIC values. Hence, we keep the constraint.  
+
+
+## Transition Matrices
+Examine the transition matrix as well. 
+```{r tau_2}
+transition_matrix_clcm(mod = mod1)
+transition_matrix_clcm(mod = mod2)
+```
+
+
+Compare the true classifications with the estimates from Model 2, with constraint imposed:
+
+```{r Classification_2}
+
+lca.hat <- mod2$dat$lca 
+lca.true <- mod2$dat$true_lca      
+table(lca.true == lca.hat)
+prop.table(table(lca.true == lca.hat)) 
+xtabs( ~ lca.true + lca.hat)
+
+```
+
+Classification accuracy is high: hypothesize that this is due to the relatively few number of latent classes, the relatively large number of items per latent classes estimated, and the fact that we fit a correctly specified model with a correctly specified Q-matrix. Overall ideal model fitting scenario, even with only n=80. 
+
+More full simulation studies should dig into this!
+
+

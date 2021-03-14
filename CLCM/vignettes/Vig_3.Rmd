@@ -1,0 +1,194 @@
+---
+title: "Vignette_3"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette_3}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+
+## Vignette 3: CLCM with More Than 2 Latent Classes 
+
+1. Data generation with K=2 factors/atttributes, 2^K = 4 latent classes
+2. Describe K, alpha, Q-matrix, eta
+3. Correctly specified model fit, Misspecified model fit - compared via AIC/BIC
+
+
+This vignette illustrates slightly different data generation. specifically, we extend the data to two attributes/factors. This introduces additional complexity that should be addressed. This extension is the main focus. Second, we use only ordinal items, which allows us to demonstrate the use of the C2 fit statistic. 
+
+
+## Specify Details of Data Generation 
+First load the CLCM package. Next, specify the data generation details. Here we generate 6 ordinal items, each with 4 categories (0, 1, 2, 3). 
+
+```{r Specify_1}
+library(CLCM)
+N <- 200
+number.timepoints <- 1
+item.type <- rep('Ordinal', 6) 
+categories.j <- rep(4, 6)
+J <- length(item.type)
+item.names <- paste0('Item_', 1:J)
+```
+     
+### The Q-matrix, `alpha`, `eta` and Condensation Rules - The Nitty Gritty
+
+Next, K is set to 2 to indicate 2 factors/attributes. The object `alpha` is the relationship between the latent classes and the attributes/factors. 
+    
+Examine `alpha`:
+```{r Specify_2, echo = F }
+K <- 2
+alpha <- vector()
+for(k in K:1){
+  tmp <- vector()
+  base <- rbind( matrix(0, nrow=2^(K-k), ncol=1), matrix(1, nrow=2^(K-k), ncol=1) )
+  base <- rep(base, 2^(k-1) )
+  alpha <- cbind(alpha,base)
+}
+alpha <- cbind(alpha, rowSums(alpha))
+alpha <- alpha[(order(alpha[,(K+1)])),]
+alpha <- alpha[ ,-(K+1)]
+alpha <- as.matrix(alpha)
+colnames(alpha) <- paste0('F', 1:K)
+rownames(alpha) <- paste0('Latent_Class_', 1:nrow(alpha))
+alpha
+```  
+  
+
+The Q-matrix, which can be thought of as a factor-loading matrix, is a crucial part of the confirmatory latent class model. This pre-specified loading structure is what makes this a confirmatory approach. This Q-matrix contains 6 rows, 1 for each item, and 2 columns, 1 for each factor/attribute. Each items loads on only 1 factor. This is done for simplicity and to ensure the model is identified. There is an extensive literature on identifiability of CLCM. TODO: add citations
+     
+Examine the Q-matrix:
+```{r Specify_4, echo = F}
+Q <- matrix(c(rep(c(1,0), J/2), rep(c(0, 1), J/2)), nrow = J, ncol = K, byrow = T)
+rownames(Q) <- item.names
+colnames(Q) <- paste0('F', 1:K)
+Q
+```
+
+
+The `eta` object specifies the relationship between the latent classes, `alpha` and the Q-matrix, `Q`. This is referred to the literature as the Condensation Rule. Here the conjunctive item condensation rule is implemented. See the literature for more details. 
+
+Examine `eta`:
+```{r Specify_5, echo = F}
+eta <- alpha %*% t(Q)
+eta <- ifelse(eta == matrix(1,2^K,1) %*% colSums(t(Q)),1, 0 )
+eta
+```
+
+Broadly, the combination of the Q-matrix (and, when K>1, the condensation rules), dramatically reduces the number of parameters required to be estimated. This of crucial importance, and should be highlighted: a sbustantial decrease in the number of parameters that are estimated is accomplished by the following:
+
+1. Prespecifying which items load on which factors/attributes
+
+2. Implementing the conjunctive condensation rule, where subjects are grouped into either Latent Class 0 or Latent Class 1 for each item. 
+
+3. `eta` specifies this grouping - for example, looking at item 1, we can see that Latent classes 2 and 4 are set to 1, where as latent classes 0 and 3 are set to 0:
+```{r Specify_6, echo = F}
+eta[ , 1, drop = F]
+```
+This means that, when estimating item `j`, the CLCM reduces the 2^K = 4 latent classes into 2. 
+
+Why latent classes 2 and 4? Well, refer back to the Q-matrix (`Q`) and `alpha`. 
+```{r Specify_7, echo = F}
+Q[ 1, , drop = F]
+alpha
+```
+We can see that the first row of the Q-matrix indicates that the first item evaluates attribute/factor 1. Referring to the `alpha` matrix, we can see that latent classes 2 and 4 are a 1 on attribute/factor 1. Thus, latent classes 2 and 4 are grouped together for any item evaluating attribute/factor 1 by itself. 
+
+### Latent Class Proportions
+
+The final part to specify are the latent class proportions `lc.prop` at the first (and only) timepoint. This is a uniform distribution, where the subjects are distributed equally throughout the latent classes. 
+
+```{r Specify_8}
+lc.prop <- list('Time_1' = rep(1/2^K, 2^K)) 
+lc.prop
+```
+
+## Simulate Item Responses
+
+The next step is to simulate data and briefly examine the item responses and posterior distributions. 
+
+```{r Simulate }
+
+set.seed(03062021)
+X <- simulate_clcm(N = N, Q = Q, number.timepoints = number.timepoints, 
+                   item.type = item.type, 
+                   categories.j = categories.j, 
+                   lc.prop = lc.prop)
+apply(X$item.responses, 2, table)                
+apply(X$item.responses, 2, function(x) prop.table(table(x)))                
+prop.table(table(apply(X$post, 1, which.max)))
+
+```
+
+Alright, we are all set to fit the CLCM to the data. We pass the dataframe containing the item responses, the item types, and the item names. Importantly, we also pass the Q-matrix, which specifies the relationship between the items and the attributes/factors. This implicitly also specifies the number of factors!
+
+## Estimate CLCM 
+
+Next step is to estimate the model. Note the option `verbose = F` can be used to stop the function from printing estimation progress.
+
+```{r Estimate }
+mod1 <- clcm(dat = X$dat, max.diff = 0.001,
+             item.type = X$item.type, 
+             item.names = X$item.names, 
+             Q = X$Q) 
+
+```
+
+
+For comparison, let's also fit a misspecified model with only 2 latent classes instead of 4. First we specify the Q-matrix, which is just a single column of ones, and then we fit the model. 
+
+```{r Estimate_2 }
+Q_2 <- matrix(1, nrow = J, ncol = 1)
+mod2 <- clcm(dat = X$dat, max.diff = 0.001,
+             item.type = X$item.type, 
+             item.names = X$item.names, 
+             Q = Q_2) 
+
+```
+
+
+## Model Fit
+
+### Absolute Fit Statistic
+First, compute the absolute fit statistic, C2. Note that this is slow - not run in this vignette.  
+```{r Model Fit_1, eval = F}
+mod.fit1 <- C2_clcm(mod1) 
+mod.fit2 <- C2_clcm(mod2) 
+```
+
+Ideally we would see the C2 statistic reject the second model, but that does not happen here. Looks like this will require additional analysis. See the C2 vignette for more on the C2 statistic. 
+
+### Relative Fit Statistics
+Second, compute the relative fit statistics, AIC & BIC:
+```{r Model Fit_2 }
+    mod.fit.rel.1 <- aic_bic_clcm(mod1)
+    mod.fit.rel.2 <- aic_bic_clcm(mod2)
+    unlist(mod.fit.rel.1)
+    unlist(mod.fit.rel.2)
+
+```
+
+As we would expect, the incorrectly specified model ( `mod2`) has the larger AIC and BIC values. 
+
+
+## Classification Accuracy 
+
+Finally, use the correctly specified model (`mod1`) and compare the true classifications with estimates:
+
+```{r Compare }
+      lca.hat <- mod1$dat$lca 
+      lca.true <- mod1$dat$true_lca      
+      table(lca.true == lca.hat)
+      prop.table(table(lca.true == lca.hat))
+      xtabs( ~ lca.true + lca.hat)
+
+```
+
+We can see that the classification accuracy tends to decrease as additional latent classes are added. This makes sense, given that the probability of randomly assigning a subject to the correct latent class decreases as the number of classes increases. 

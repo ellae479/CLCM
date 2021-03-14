@@ -1,0 +1,160 @@
+---
+title: "Vignette_1"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette_1}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview of Vignettes
+1. Introduction to the CLCM R package
+2. C2 Fit Statistic
+3. CLCM with more than 2 latent classes 
+4. CLCM with Multinomial Latent Regression (4 latent classes)
+
+5. Longitudinal CLCM & Transition Matrix
+6. Longitudinal CLCM with Latent Regression (2 latent classes)
+7. Longitudinal CLCM with Multinomial Latent Regression (4 latent classes)
+
+
+
+## Introduction to CLCM R package
+This is an intro to the CLCM R package, which provides a variety of options for fitting confimatory latent class models to data types commonly occurring in clinical data. The novel methodological contribution to the field of statistics/psychometrics is the extension of models from Educational Measurement literature, which typically deals with binary data, to data distributions commonly encountered in clinical datasets. 
+
+
+This first or intro vignette will illustrate some of the capabilities of the package. Data will be simulated using K=1, or 1 factor. This will yield 2 latent classes. All 8 item types available will be simulated for this first example. Then a model will be fit to the data, and the AIC/BIC will be computed. Other vignettes will demonstrate the use of the C2 fit statistic and the transition matrix. The latter is used when data is longitudinal. 
+
+
+## Specify Details of Data Generation 
+1. Specify the item.types (note that this implicitly specifies the number of items)
+2. Specify how many categories in the items
+3. If it's a categorical/count item, specify number of categories - if it's continuous (e.g., Normal or Beta distribution), just set to `NA`.
+4. Specify the latent class proportions at each timepoint
+5. Specify the Q-matrix
+
+```{r Specify}
+library(CLCM)
+library(ggplot2)
+N <- 500
+number.timepoints <- 1
+item.type <- c('Ordinal', 'Nominal', 'Poisson', 'Neg_Binom', 'ZINB', 'ZIP', 'Normal', 'Beta') 
+sim.categories.j <- c(4, 4,  30, 30, 30, 30, NA, NA) 
+lc.prop <- list('Time_1' = c(0.5, 0.5), 
+                'Time_2' =  c(0.5, 0.5) )     
+Q <- matrix(1, nrow = length(item.type), ncol = 1, 
+            dimnames = list(paste0('Item_', 1:length(item.type)), 'F1'))
+Q
+```
+
+Notice that the Q-matrix has 1 factor/attribute (K=1), which yields 2 latent classes. The simulation function has a default of 2 latent classes, so if you ignore the function call entirely, the function will create this Q-matrix automatically. 
+
+
+## Simulate Item Responses
+Now we have what we need to pass to the function used to simulate the data. 
+
+```{r Generate}
+set.seed(03102021)
+sim.dat <- simulate_clcm(N = N, Q = Q, number.timepoints = number.timepoints, 
+                         item.type = item.type, 
+                         categories.j = sim.categories.j, 
+                         lc.prop = lc.prop)
+```
+
+This yields the simulated item responses. From here we can proceed to estimate the model. 
+
+
+## Estimate CLCM
+Note the option `verbose = F` can be used to stop the function from printing estimation progress.
+```{r Estimate}
+mod <- clcm(dat = sim.dat$dat, 
+            item.type = sim.dat$item.type, 
+            item.names = sim.dat$item.names, 
+            Q = sim.dat$Q) 
+
+```
+
+This yields the estimated confirmatory latent class model.
+
+## Model Fit
+Next let's exmaine model fit. Unfortunately, we cannot use the C2 statistic to evaluate absolute model fit due to the item types used here. The C2 statistic can only be used with all ordinal items. In this case, we can only compute the AIC/BIC. Of course, these are relative fit statistics so they aren't very useful without a comparison. Regardless, we can compute it to illustrate that it is available. 
+
+```{r Fit}
+aic_bic_clcm(mod = mod) 
+```
+
+
+## Classification Accuracy 
+Next, let's examine classification accuracy. We can compare the true latent class assignment (lca) with the estimated lca. This is performed next. Note that the model output contains the `true_lca` because the dataframe of simulated data (`sim.dat`) contained that variable.
+
+```{r Results}
+lca.hat <- mod$dat$lca
+lca.true <- mod$dat$true_lca
+prop.table(table(lca.true == lca.hat))
+xtabs( ~ lca.true + lca.hat)
+```
+
+Looks pretty, preettty, prettttty good. 
+
+
+## Plots
+Next let's visualize how the item responses vary across the two latent classes. 
+
+```{r Plot Results, out.width="80%"}
+
+library(ggplot2)
+dat.plot <- mod$dat
+dat.plot$lca <- factor(dat.plot$lca, levels = sort(unique(dat.plot$lca)), labels = paste0('Class ', sort(unique(dat.plot$lca)) ))
+item.names <- mod$item.names
+
+for(j in 1:length(item.names) ){
+  
+  if(item.type[j] %in% c('Ordinal', 'Nominal')){
+    
+    pp <- ggplot(data = dat.plot, aes(fill=lca, x= as.factor(get(item.names[j])) )) + 
+      geom_bar(aes(y = (..count..)/sum(..count..)), color="#e9ecef", alpha=0.6, position="dodge", stat="count") + 
+      scale_y_continuous(labels=scales::percent_format(accuracy = 1)) +
+      scale_fill_manual(name = 'Latent Classes', values=c("blue2", "red2")) +
+      theme_minimal() +                             
+      theme(legend.position = 'bottom') + 
+      labs(x = 'Item Responses', y = 'Percentage', 
+           title = paste0('Item Name: ', item.names[j]), 
+           subtitle = paste0('Item Type: ', item.type[j]), 
+           caption = 'Note: Simulated data')
+    
+    suppressMessages(plot(pp))
+    
+  }# Ordinal
+  
+  
+  if(item.type[j] %in% c('Poisson', 'Neg_Binom', 'ZINB', 'ZIP', 'Normal', 'Beta')){
+    
+    pp <- ggplot(data = dat.plot, aes(x = get(item.names[j]), group = lca, fill = lca)) + 
+      geom_histogram(aes(y = (..count..)/sum(..count..)), color="#e9ecef", alpha=0.6, position = 'identity') +
+      scale_y_continuous(labels=scales::percent_format(accuracy = 1)) +
+      scale_fill_manual(name = 'Latent Classes', values=c("blue2", "red2")) +
+      theme_minimal() + 
+      theme(legend.position = 'bottom') + 
+      labs(x = 'Item Responses', y = 'Percentage', 
+           title = paste0('Item Name: ', item.names[j]), 
+           subtitle = paste0('Item Type: ', item.type[j]), 
+           caption = 'Note: Simulated data')
+    
+    suppressMessages(plot(pp))
+    
+  }# Count items
+  
+  
+  
+}# end loop over items
+
+  
+
+```

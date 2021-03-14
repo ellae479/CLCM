@@ -1,0 +1,159 @@
+---
+title: "Vignette_4"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette_4}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Vignette 4: Multinomial Latent Regression (4 latent classes)
+
+1. Timepoints: T=1
+2. Latent Classes: K=2, 2^K = 4 latent classes
+3. Recover latent regression parameters and check classification accuracy 
+
+
+## Specify Details of Data Generation 
+First step is to set-up the data we will be generating. Here 1,000 subjects from 4 different latent classes responded to 16 items. Data was only collected once.  
+```{r Specify}
+
+library(CLCM)
+library(nnet)
+N <- 1000
+number.timepoints <- 1
+item.type <- rep( c('Ordinal', 'Nominal', 'Poisson', 'Neg_Binom', 'ZINB', 'ZIP', 'Normal', 'Beta'), 2)
+sim.categories.j <- rep( c(4, 4, 30, 30, 30, 30, NA, NA) , 2)
+J <- length(item.type)
+item.names <- paste0('Item_', 1:J)
+K= 2
+Q <- matrix(c(rep(c(1,0), J/2), rep(c(0, 1), J/2)), nrow = J, ncol = K, byrow = T)
+
+```
+
+
+### Subject Posterior Distributions via Multinomial Regression 
+
+Generate the subject posteriors via (multinomial) latent regression. The latent class assignments will differ across the two observed groups (`Group`). 
+
+```{r Generate_1}
+
+number.groups <- 2
+dat <- data.frame(
+  'USUBJID' = rep(paste0('Subject_', formatC(1:N, width = 4, flag = '0')), length.out= N*number.timepoints),
+  'Group' = rep(paste0('Group_', 1:number.groups), length.out = N*number.timepoints),
+  'Time' = rep(paste0('Time_', 1:number.timepoints), each = N),
+  stringsAsFactors=F)
+# Design Matrix
+XX <- model.matrix( ~ Group, data = dat) 
+# Beta
+Beta <- matrix(0, nrow = ncol(XX), ncol = 2^K - 1, dimnames=list(colnames(XX), rep('LC', 2^K -1)))
+Beta[1, ] <- c(0.2, 0.8, 0.4)
+Beta[2, ] <- c(0.2, -1.0, -1.6)
+Beta
+
+# Matrix multiply:
+XB <- XX %*% Beta
+p <- exp(XB)/(1 + apply(exp(XB), 1, sum))
+p <-  cbind(1 - rowSums(p), p)
+lca <-  vector()
+for(i in 1:nrow(p)){
+  lca <- c(lca, 
+           sample(x = c(1:(2^K)), size = 1, prob = p[i, ])  
+  )
+} #end loop to sample lca
+
+```
+
+At this point we have used the observed group membership (`Group`) to generate the (true) posterior distributions/latent class assignments for both timepoints. Let's check the latent class assignments vs Observed group assignment. Again, we haven't yet moved into latent class models yet. 
+
+```{r Generate_2}
+# Check the LCA 
+prop.table(table(lca))
+# Check LCA across observed Groups:
+prop.table(xtabs( ~ lca + dat$Group), margin = 1)
+      
+```
+
+
+Before we move on with the simulation, let's just do a quick check on whether a simple multinomial logistic regression can recover this. Regress latent class assignment onto observed groups:
+
+```{r Generate_3}
+
+mod <- nnet:::multinom(as.factor(lca) ~ dat$Group)
+coef(mod)
+t(Beta)
+
+```
+
+Recovery seems fine. Let's create the true posterior distributions and pass to the simulation function.
+
+## Simulate Item Responses
+```{r Generate_4}
+
+post <- matrix(0, nrow = nrow(dat), ncol = 2^K)
+post[ cbind(1:nrow(dat), lca) ] <- 1 
+
+set.seed(03062021)
+X <- simulate_clcm(N = N, number.timepoints = number.timepoints, 
+                   Q = Q, 
+                   item.names = item.names, 
+                   item.type = item.type, 
+                   categories.j = sim.categories.j, 
+                   post = post)
+
+```
+
+
+Merge the dataframe with the Observed Group membership with the simulated dataframe. You need the `Group` variable with the item responses to pass to the model estimation function. If you don't, the esimtation routine won't have a `Group` variable to compute the multinomial latent regression with. 
+
+```{r Generate_5}
+dat.cov <- merge(x = dat, y = X$dat, by = c('USUBJID', 'Time'))
+```
+
+Specify the latent regression formula - regress latent classes onto `Group` variable in model estimation by passing `lat.reg = list('Time_1' = 'Group')`. Note: if we had additional covariates, we would pass the corresponding regression formula, e.g. `'Group + Sex + Age'`. This will be passed to `as.formula` and then passed to a function that fits a regression.
+
+## Estimate CLCM
+
+```{r Estimate}
+
+mod <- clcm(dat = dat.cov, 
+            item.type = item.type, 
+            item.names = item.names, 
+            Q = Q, max.diff = 0.001, 
+            lat.reg = list('Time_1' = 'Group') )    
+
+```
+
+
+## Results
+
+
+Evaluate the Latent Regression Parameters:
+```{r Results}
+
+Beta # Generating parameter
+mod$lat.reg.param  # estimate
+
+```
+
+
+Next, compare true classification (latent class assignment, lca) with estimates:
+```{r Classification}
+lca.hat <- mod$dat$lca 
+lca.true <- apply( dat.cov[ , grep('true_post', colnames(dat.cov)) ], 1, which.max)
+xtabs( ~ lca.hat + lca.true)
+table(lca.true == lca.hat)
+prop.table(table(lca.true == lca.hat))
+
+```
+
+
+Pretty, preeettty, preeeeeetttttyyy good.
