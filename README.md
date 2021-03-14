@@ -35,9 +35,7 @@ submission.
 ## Examples
 
 For concise examples of how these models can be applied to clinical
-data, see the Vignettes
-(<https://cjangelo.github.io/CLCM/articles.html>) under `Articles` at
-the top of this page.
+data, see the Vignettes under `Articles` at the top of this page.
 
 ## License
 
