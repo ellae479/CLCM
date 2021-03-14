@@ -1,0 +1,22 @@
+Package: CLCM
+Title: Estimate Confirmatory Latent Class Models
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Charlie",
+           family = "Iaconangelo",
+           role = c("aut", "cre"),
+           email = "charles.iaconangelo@gmail.com",
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: Estimate confirmatory latent class models for a variety of item response types that are encountered in the clinical field. One or two timepoints are supported. Latent regression estimation can be performed, allowing for comparisons of longitudinal latent class assignments (e.g., treatment success/failure) across observed groups (e.g., treatment arms in clinical trials). Fit statistics (C2, AIC/BIC) are available as well. 
+License: `use_gpl3_license()`
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports:
+	numDeriv,
+	Matrix
+Suggests: 
+    rmarkdown,
+    knitr
+VignetteBuilder: knitr
