@@ -1,4 +1,4 @@
-pandoc: 2.11.2
+pandoc: 2.11.4
 pkgdown: 1.6.1
 pkgdown_sha: ~
 articles:
@@ -9,5 +9,5 @@ articles:
   Vig_5: Vig_5.html
   Vig_6: Vig_6.html
   Vig_7: Vig_7.html
-last_built: 2021-03-14T21:22Z
+last_built: 2021-07-15T21:58Z
 
