@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Function reference • CLCM</title>
+<title>Loglikelihood — compute_loglike • CLCM</title>
 
 
 <!-- jquery -->
@@ -39,7 +39,8 @@
 
 
 
-<meta property="og:title" content="Function reference" />
+<meta property="og:title" content="Loglikelihood — compute_loglike" />
+<meta property="og:description" content="Compute the loglikelihood of a CLCM" />
 
 
 
@@ -58,7 +59,7 @@
   </head>
 
   <body data-spy="scroll" data-target="#toc">
-    <div class="container template-reference-index">
+    <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -130,84 +131,45 @@
       </header>
 
 <div class="row">
-  <div class="contents col-md-9">
+  <div class="col-md-9 contents">
     <div class="page-header">
-      <h1>Reference</h1>
+    <h1>Loglikelihood</h1>
+    
+    <div class="hidden name"><code>compute_loglike.Rd</code></div>
     </div>
 
-    <table class="ref-index">
+    <div class="ref-description">
+    <p>Compute the loglikelihood of a CLCM</p>
+    </div>
 
-    <colgroup>
-      
-      <col class="alias" />
-      <col class="title" />
-    </colgroup>
+    <pre class="usage"><span class='fu'>compute_loglike</span><span class='op'>(</span><span class='va'>X</span>, <span class='va'>item.type</span>, <span class='va'>param</span>, <span class='va'>eta</span>, <span class='va'>categories.j</span><span class='op'>)</span></pre>
 
-    <tbody>
-      <tr>
-        <th colspan="2">
-          <h2 id="section-all-functions" class="hasAnchor"><a href="#section-all-functions" class="anchor"></a>All functions</h2>
-          <p class="section-desc"></p>
-        </th>
-      </tr>
-      
-      
-    </tbody><tbody>
-      
-      
-      <tr>
-        
-        <td>
-          <p><code><a href="aic_bic_clcm.html">aic_bic_clcm()</a></code> </p>
-        </td>
-        <td><p>AIC, BIC, -2LL</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="C2_clcm.html">C2_clcm()</a></code> </p>
-        </td>
-        <td><p>C2 Fit Statistic</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="clcm.html">clcm()</a></code> </p>
-        </td>
-        <td><p>Fit CLCM</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="compute_loglike.html">compute_loglike()</a></code> </p>
-        </td>
-        <td><p>Loglikelihood</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="compute_lprior.html">compute_lprior()</a></code> </p>
-        </td>
-        <td><p>Prior Distribution</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="compute_post.html">compute_post()</a></code> </p>
-        </td>
-        <td><p>Posterior distribution</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="simulate_clcm.html">simulate_clcm()</a></code> </p>
-        </td>
-        <td><p>Simulate Data</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="transition_matrix_clcm.html">transition_matrix_clcm()</a></code> </p>
-        </td>
-        <td><p>Transition Matrix</p></td>
-      </tr>
-    </tbody>
+    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
+    <table class="ref-arguments">
+    <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>X</th>
+      <td><p>matrix of item responses</p></td>
+    </tr>
+    <tr>
+      <th>item.type</th>
+      <td><p>character vector of item types</p></td>
+    </tr>
+    <tr>
+      <th>eta</th>
+      <td><p>matrix operationalizing the condensation rules</p></td>
+    </tr>
+    <tr>
+      <th>categories.j</th>
+      <td><p>numeric vector of number of categories per item</p></td>
+    </tr>
     </table>
-  </div>
 
+    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+
+    <p>matrix of N by 2^K</p>
+
+  </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
       <h2 data-toc-skip>Contents</h2>
