@@ -1,3 +1,15 @@
+#' Posterior distribution
+#'
+#' Compute the posterior distribution of a CLCM
+#' @param X matrix of item responses
+#' @param item.type character vector of item types
+#' @param param list of item parameters
+#' @param lprior N by 2^K matrix of log of prior distribution
+#' @param eta matrix operationalizing the condensation rules
+#' @param categories.j numeric vector of number of categories per item
+#' @return matrix of N by 2^K
+#' @export
+#'
 
 compute_post <- function(X, item.type, param, lprior, eta, categories.j){
 

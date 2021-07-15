@@ -1,3 +1,16 @@
+#' Prior Distribution
+#'
+#' Compute the log of the prior distribution for use in the EM algorithm
+#'
+#' @param post posterior distribution
+#' @param Z data frame or matrix containing covariates
+#' @param type the type of prior distribution - this is selected automatically in the clcm() function
+#' depending on what is passed
+#' @param reg.formula if a latent regression is estimated, pass the model specification as a character here
+#' @return matrix of N by 2^K
+#' @export
+#'
+
 
 
 compute_lprior <- function(post, K, Z = NULL, type = NULL, reg.formula = NULL){
