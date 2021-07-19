@@ -3,5 +3,8 @@
 export(C2_clcm)
 export(aic_bic_clcm)
 export(clcm)
+export(compute_loglike)
+export(compute_lprior)
+export(compute_post)
 export(simulate_clcm)
 export(transition_matrix_clcm)
