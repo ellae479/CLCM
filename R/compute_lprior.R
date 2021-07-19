@@ -9,7 +9,6 @@
 #' @param reg.formula if a latent regression is estimated, pass the model specification as a character here
 #' @return matrix of N by 2^K
 #' @export
-#'
 
 
 
